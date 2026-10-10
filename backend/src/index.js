@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { pool } = require("./config/db");
-const urlRoutes = require("./routes/urlRoute");
+const urlRoutes = require("./routes/url");
 
 
 
@@ -22,7 +22,7 @@ app.use("/api", urlRoutes);
 //   for (let i = 0; i < result.rowCount; i++) {
 //     console.log(result.rows[i]);
 //   }
-//   res.send(result.rows[0]);
+//   res.send(result.rows[1]);
 // });
 
 
