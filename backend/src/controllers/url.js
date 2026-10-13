@@ -16,17 +16,17 @@ function generateBase62Standard(length = 6) {
 
 function isValidHttpUrl(value) {
     if (typeof value !== "string" || !value.trim()) {
-        return false;
+      return false;
     }
 
     try {
-        const url = new URL(value.trim());
+      const url = new URL(value.trim());
 
-        return (
-            ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname)
-        );
+      return (
+          ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname)
+      );
     } catch (_) {
-        return false;
+      return false;
     }
 }
 
@@ -105,7 +105,7 @@ const handleRedirectURL = async (req, res) => {
       transactionStarted = false;
 
       return res.status(404).json({
-        error: "Short URL not found",
+        error: "Short URL not found!",
       });
     }
 
@@ -176,12 +176,12 @@ const handleGetAnalytics = async (req, res) => {
 
       pool.query(
         `SELECT
-                    DATE(clicked_at) AS day,
-                    COUNT(*)::int AS clicks
-                 FROM click_events
-                 WHERE short_url_id = $1
-                 GROUP BY DATE(clicked_at)
-                 ORDER BY day ASC`,
+              DATE(clicked_at) AS day,
+              COUNT(*)::int AS clicks
+              FROM click_events
+              WHERE short_url_id = $1
+              GROUP BY DATE(clicked_at)
+              ORDER BY day ASC`,
         [id],
       ),
     ]);
@@ -201,8 +201,34 @@ const handleGetAnalytics = async (req, res) => {
   }
 };
 
+const handleGetAllUrls = async (req, res) => {
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM short_urls`,
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json("No Urls Found!");
+    }
+
+    const urls = result.rows.map((row) => ({
+      original_url: row.original_url,
+      short_url: row.short_code,
+      date: row.created_at,
+      clicks: row.clicks_count
+    }));
+
+    return res.json(urls);
+
+  } catch (err) {
+     return res.status(500).json({ error: err.message || err });
+  }
+};
+
 module.exports = {
   handleCreateShortUrl,
   handleRedirectURL,
   handleGetAnalytics,
+  handleGetAllUrls
 };

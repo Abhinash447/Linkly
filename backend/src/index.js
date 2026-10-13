@@ -5,7 +5,6 @@ const { pool } = require("./config/db");
 const urlRoutes = require("./routes/url");
 
 
-
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -15,7 +14,7 @@ app.use(express.urlencoded({ extends: true }));
 app.use(cors());
 
 // Routes
-app.use("/api", urlRoutes);
+app.use("/", urlRoutes);
 
 // app.get("/api/urls", async (req, res) => {
 //   const result = await pool.query("SELECT * FROM short_urls");
@@ -30,10 +29,7 @@ app.use("/api", urlRoutes);
 
 
 // Testing postgres connection
-app.get("/", async (req, res) => {
-  const result = await pool.query("SELECT current_database()");
-  res.send(`Database name is: ${result.rows[0].current_database}`);
-})
+
 
 // Server is running
 app.listen(PORT, () => {
