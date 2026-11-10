@@ -1,7 +1,7 @@
 // Use localhost only for local development; deployed builds must configure their API URL.
 export const API_BASE_URL =
   (import.meta.env.VITE_API_URL ||
-    (import.meta.env.DEV ? "http://localhost:8000" : ""))?.replace(/\/+$/, "") ||
+    (import.meta.env.DEV ? "http://localhost:8000/api" : ""))?.replace(/\/+$/, "") ||
   "";
 
 export async function api(path, options = {}) {
