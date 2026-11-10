@@ -11,7 +11,8 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import "../App.css";
+import "./Analytics.css"
+import { api } from "../api/api.js";
 
 function Analytics() {
   const { short_code } = useParams();
@@ -28,19 +29,11 @@ function Analytics() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `http://localhost:8000/analytics/${encodeURIComponent(
-            short_code,
-          )}`,
+        // The helper supplies the auth token and configured API host for this protected request.
+        const data = await api(
+          `/analytics/${encodeURIComponent(short_code)}`,
           { signal: controller.signal },
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch analytics");
-        }
-
         setAnalytics(data);
       } catch (err) {
         if (err.name === "AbortError") return;

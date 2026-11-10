@@ -1,8 +1,6 @@
 import { useState } from "react";
-import "../App.css";
-
-const API_URL = "http://localhost:8000/";
-const SHORT_URL_BASE = "http://localhost:8000";
+import "./Home.css";
+import { API_BASE_URL, api } from "../api/api.js";
 
 function Home() {
   const [originalUrl, setOriginalUrl] = useState("");
@@ -22,21 +20,13 @@ function Home() {
     const trimmedUrl = originalUrl.trim();
 
     try {
-      const response = await fetch(API_URL, {
+      // The shared API helper selects localhost in development and the configured host in production.
+      const data = await api("/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           original_url: trimmedUrl,
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to shorten this URL.");
-      }
 
       if (!data.short_code) {
         throw new Error("The server did not return a short code.");
@@ -54,7 +44,7 @@ function Home() {
     }
   }
 
-  const shortUrl = shortCode ? `${SHORT_URL_BASE}/${shortCode}` : "";
+  const shortUrl = shortCode ? `${API_BASE_URL}/${shortCode}` : "";
 
   async function handleCopy() {
     try {

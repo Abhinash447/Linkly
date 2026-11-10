@@ -1,19 +1,46 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+
 import Home from "./pages/Home";
 import Analytics from "./pages/Analytics";
-import "./App.css";
 import Urls from "./pages/Urls";
+import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+import Sidebar from "./components/Sidebar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/urls" element={ <Urls />} />
-        <Route path="/analytics/:short_code" element={<Analytics />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="app">
+      <Sidebar />
+
+      <div className="main-content">
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/urls"
+            element={
+              <ProtectedRoute>
+                <Urls />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analytics/:short_code"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </div>
+    </div>
   );
 }
 

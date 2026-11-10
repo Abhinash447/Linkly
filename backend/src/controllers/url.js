@@ -5,29 +5,27 @@ const alphabet =
   "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function generateBase62Standard(length = 6) {
-    let result = "";
+  let result = "";
 
-    for (let i = 0; i < length; i++) {
-        result += alphabet[crypto.randomInt(alphabet.length)];
-    }
+  for (let i = 0; i < length; i++) {
+    result += alphabet[crypto.randomInt(alphabet.length)];
+  }
 
-    return result;
+  return result;
 }
 
 function isValidHttpUrl(value) {
-    if (typeof value !== "string" || !value.trim()) {
-      return false;
-    }
+  if (typeof value !== "string" || !value.trim()) {
+    return false;
+  }
 
-    try {
-      const url = new URL(value.trim());
+  try {
+    const url = new URL(value.trim());
 
-      return (
-          ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname)
-      );
-    } catch (_) {
-      return false;
-    }
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname);
+  } catch (_) {
+    return false;
+  }
 }
 
 const handleCreateShortUrl = async (req, res) => {
@@ -52,13 +50,17 @@ const handleCreateShortUrl = async (req, res) => {
       const short_code = generateBase62Standard(6);
 
       const insertQuery = `
-        INSERT INTO short_urls (original_url, short_code, created_at) 
-        VALUES ($1, $2, NOW()) 
+        INSERT INTO short_urls (original_url, short_code, created_at, user_id)
+        VALUES ($1, $2, NOW(), $3)
         RETURNING short_code;
       `;
 
       // Use the trimmed, normalized URL
-      await pool.query(insertQuery, [normalizedUrl, short_code]);
+      await pool.query(insertQuery, [
+        normalizedUrl,
+        short_code,
+        req.user?.id ?? null,
+      ]);
 
       return res.status(201).json({
         message: "Short url created",
@@ -79,7 +81,6 @@ const handleCreateShortUrl = async (req, res) => {
     }
   }
 };
-
 
 const handleRedirectURL = async (req, res) => {
   const { short_code } = req.params;
@@ -143,6 +144,39 @@ const handleRedirectURL = async (req, res) => {
   }
 };
 
+
+const handleDeleteUrl = async (req, res) => {
+  const { short_code } = req.params;
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM short_urls
+       WHERE short_code = $1 AND user_id = $2
+       RETURNING id`,
+      [short_code, req.user.id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "URL not found or you don't have permission to delete it",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "URL deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete URL error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 const handleGetAnalytics = async (req, res) => {
   const { short_code } = req.params;
 
@@ -150,8 +184,8 @@ const handleGetAnalytics = async (req, res) => {
     const metadataResult = await pool.query(
       `SELECT id, clicks_count
              FROM short_urls
-             WHERE short_code = $1`,
-      [short_code],
+             WHERE short_code = $1 AND user_id = $2`,
+      [short_code, req.user.id],
     );
 
     if (metadataResult.rows.length === 0) {
@@ -165,12 +199,12 @@ const handleGetAnalytics = async (req, res) => {
     const [countryResult, dailyResult] = await Promise.all([
       pool.query(
         `SELECT
-                    COALESCE(country, 'Unknown') AS country,
-                    COUNT(*)::int AS clicks
-                 FROM click_events
-                 WHERE short_url_id = $1
-                 GROUP BY country
-                 ORDER BY clicks DESC`,
+          COALESCE(country, 'Unknown') AS country,
+          COUNT(*)::int AS clicks
+          FROM click_events
+          WHERE short_url_id = $1
+          GROUP BY country
+          ORDER BY clicks DESC`,
         [id],
       ),
 
@@ -202,27 +236,25 @@ const handleGetAnalytics = async (req, res) => {
 };
 
 const handleGetAllUrls = async (req, res) => {
-
   try {
     const result = await pool.query(
-      `SELECT * FROM short_urls`,
-    )
-
-    if (result.rows.length === 0) {
-      return res.status(404).json("No Urls Found!");
-    }
+      `SELECT original_url, short_code, created_at, clicks_count
+       FROM short_urls
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.user.id],
+    );
 
     const urls = result.rows.map((row) => ({
       original_url: row.original_url,
       short_url: row.short_code,
       date: row.created_at,
-      clicks: row.clicks_count
+      clicks: row.clicks_count,
     }));
 
     return res.json(urls);
-
   } catch (err) {
-     return res.status(500).json({ error: err.message || err });
+    return res.status(500).json({ error: err.message || err });
   }
 };
 
@@ -230,5 +262,6 @@ module.exports = {
   handleCreateShortUrl,
   handleRedirectURL,
   handleGetAnalytics,
-  handleGetAllUrls
+  handleGetAllUrls,
+  handleDeleteUrl,
 };
