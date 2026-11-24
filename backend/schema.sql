@@ -1,58 +1,37 @@
--- Fresh Neon/PostgreSQL schema for Linkly.
--- Apply this file to an empty database using the Neon SQL Editor.
+-- schema.sql for Neon
 
-CREATE SEQUENCE public.users_id_seq AS integer;
-CREATE SEQUENCE public.urls_id_seq AS integer;
-CREATE SEQUENCE public.click_events_id_seq AS integer;
-
-CREATE TABLE public.users (
-  email varchar(255) NOT NULL,
-  password varchar(255) NOT NULL,
-  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-  id integer NOT NULL DEFAULT nextval('public.users_id_seq'::regclass),
-  CONSTRAINT users_email_key UNIQUE (email)
+-- users
+CREATE TABLE users (
+    id         SERIAL PRIMARY KEY,
+    email      VARCHAR(255) NOT NULL,
+    password   VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT users_email_key UNIQUE (email)
 );
 
-CREATE UNIQUE INDEX users_id_uidx ON public.users (id);
-
-CREATE TABLE public.short_urls (
-  id integer NOT NULL DEFAULT nextval('public.urls_id_seq'::regclass),
-  original_url varchar,
-  short_code varchar,
-  created_at date,
-  clicks_count integer NOT NULL DEFAULT 0,
-  user_id integer,
-  CONSTRAINT urls_pkey PRIMARY KEY (id),
-  CONSTRAINT constraint_name UNIQUE (short_code),
-  CONSTRAINT short_urls_user_id_fkey
-    FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE SET NULL
+-- short_urls
+CREATE TABLE short_urls (
+    id           SERIAL PRIMARY KEY,
+    original_url VARCHAR,
+    short_code   VARCHAR,
+    created_at   DATE,
+    clicks_count INTEGER NOT NULL DEFAULT 0,
+    user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX short_urls_user_id_idx ON public.short_urls (user_id);
+CREATE UNIQUE INDEX short_urls_short_code_key ON short_urls (short_code);
+CREATE INDEX short_urls_user_id_idx ON short_urls (user_id);
 
-CREATE TABLE public.click_events (
-  id integer NOT NULL DEFAULT nextval('public.click_events_id_seq'::regclass),
-  short_url_id integer,
-  clicked_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  country varchar(2),
-  CONSTRAINT click_events_pkey PRIMARY KEY (id),
-  CONSTRAINT click_events_short_url_id_fkey
-    FOREIGN KEY (short_url_id)
-    REFERENCES public.short_urls (id)
-    ON DELETE CASCADE
+-- click_events
+CREATE TABLE click_events (
+    id           SERIAL PRIMARY KEY,
+    short_url_id INTEGER REFERENCES short_urls(id) ON DELETE CASCADE,
+    clicked_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    country      VARCHAR(2)
 );
 
-CREATE TABLE public.schema_migrations (
-  filename text NOT NULL,
-  applied_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schema_migrations_pkey PRIMARY KEY (filename)
+-- schema_migrations
+CREATE TABLE schema_migrations (
+    filename   TEXT NOT NULL PRIMARY KEY,
+    applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
-
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-ALTER SEQUENCE public.urls_id_seq OWNED BY public.short_urls.id;
-ALTER SEQUENCE public.click_events_id_seq OWNED BY public.click_events.id;
-
--- This schema already includes migration 001's owner column and index.
-INSERT INTO public.schema_migrations (filename)
-VALUES ('001_add_short_url_owner.sql')
-ON CONFLICT (filename) DO NOTHING;
